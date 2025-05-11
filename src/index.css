@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-white text-black;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-6 py-3 border border-black bg-black text-white font-bold rounded-full uppercase tracking-wider transition-colors duration-200 hover:bg-white hover:text-black;
+  }
+  
+  .btn-secondary {
+    @apply px-6 py-3 border border-black bg-white text-black font-bold rounded-full uppercase tracking-wider transition-colors duration-200 hover:bg-black hover:text-white;
+  }
+  
+  .input-field {
+    @apply w-full px-4 py-2 border-2 border-black rounded-lg bg-white text-black font-semibold focus:ring-2 focus:ring-black focus:border-black transition-all;
+  }
+} 
