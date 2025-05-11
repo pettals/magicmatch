@@ -18,7 +18,7 @@ export const useOutfitGenerator = () => {
       throw new Error('User must be authenticated')
     }
 
-    if (profile.generationsLeft <= 0 && !profile.isPremium) {
+    if ((profile.generationsLeft ?? 0) <= 0 && !profile.isPremium) {
       throw new Error('No generations left. Please upgrade to premium.')
     }
 
@@ -29,11 +29,15 @@ export const useOutfitGenerator = () => {
       // Generate outfit using OpenAI
       const { image, description } = await generateOutfit(params)
 
+      if (!image || !description) {
+        throw new Error('Failed to generate outfit')
+      }
+
       // Get retailer suggestions
       const retailerSuggestions = await suggestRetailers(description)
 
       // Parse retailer suggestions into structured data
-      const retailers = parseRetailerSuggestions(retailerSuggestions)
+      const retailers = parseRetailerSuggestions(retailerSuggestions || '')
 
       const outfit = {
         image,
@@ -60,22 +64,14 @@ export const useOutfitGenerator = () => {
     }
   }
 
-  const parseRetailerSuggestions = (suggestions: string) => {
-    // This is a simplified parser. In a real app, you'd want more robust parsing
-    const retailers: { name: string; url: string }[] = []
-    
-    // Split by newlines and look for retailer names and URLs
-    const lines = suggestions.split('\n')
-    for (const line of lines) {
-      const urlMatch = line.match(/https?:\/\/[^\s]+/)
-      if (urlMatch) {
-        const url = urlMatch[0]
-        const name = line.split(':')[0].trim()
-        retailers.push({ name, url })
-      }
-    }
-
-    return retailers
+  const parseRetailerSuggestions = (suggestions: string): { name: string; url: string }[] => {
+    // Basic implementation - you might want to enhance this
+    return suggestions.split('\n')
+      .filter(line => line.trim())
+      .map(line => {
+        const [name, url] = line.split(':').map(s => s.trim())
+        return { name, url: url || '#' }
+      })
   }
 
   return {
@@ -83,6 +79,6 @@ export const useOutfitGenerator = () => {
     error,
     generatedOutfit,
     generate,
-    canGenerate: profile?.generationsLeft > 0 || profile?.isPremium
+    canGenerate: (profile?.generationsLeft ?? 0) > 0 || profile?.isPremium
   }
 } 

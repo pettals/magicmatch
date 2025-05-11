@@ -1,14 +1,18 @@
-import { ShoppingBagIcon } from '@heroicons/react/24/outline'
+import { FC } from 'react'
 
 interface BrandIconProps {
-  brand: 'zara' | 'hm' | 'plt' | 'shein'
+  brand?: string
   className?: string
 }
 
-const BrandIcons = ({ brand, className = 'h-6 w-6' }: BrandIconProps) => {
-  // For now, we'll use a generic shopping bag icon for all brands
+const BrandIcons: FC<BrandIconProps> = ({ className = 'h-6 w-6' }) => {
   return (
-    <ShoppingBagIcon className={className} />
+    <div className="flex items-center space-x-4">
+      <img src="/src/assets/icons/zara-logo.svg" alt="Zara" className={className} />
+      <img src="/src/assets/icons/hm-icon.svg" alt="H&M" className={className} />
+      <img src="/src/assets/icons/shein-icon.svg" alt="Shein" className={className} />
+      <img src="/src/assets/icons/PrettyLittleThing-Icon.png" alt="PrettyLittleThing" className={className} />
+    </div>
   )
 }
 

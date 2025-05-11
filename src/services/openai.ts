@@ -1,60 +1,91 @@
 import OpenAI from 'openai'
 
-const openaiApiKey = import.meta.env.VITE_OPENAI_API_KEY
-
-if (!openaiApiKey) {
-  throw new Error('Missing OpenAI API key')
-}
-
 const openai = new OpenAI({
-  apiKey: openaiApiKey,
+  apiKey: process.env.REACT_APP_OPENAI_API_KEY,
   dangerouslyAllowBrowser: true
 })
 
 export interface OutfitGenerationParams {
+  style: string
   occasion: string
-  stylePreferences: string[]
-  height: number
-  weight: number
+  color: string
+  gender: string
+  budget: string
 }
 
 export const generateOutfit = async (params: OutfitGenerationParams) => {
+  if (!process.env.REACT_APP_OPENAI_API_KEY) {
+    throw new Error('OpenAI API key is not configured')
+  }
+
   try {
     // Generate outfit description using GPT-4
     const descriptionResponse = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: 'gpt-4',
       messages: [
         {
-          role: "system",
-          content: "You are a fashion expert. Generate a detailed outfit description based on the user's preferences and measurements."
+          role: 'system',
+          content: 'You are a fashion expert. Generate a detailed outfit description based on the given parameters.'
         },
         {
-          role: "user",
-          content: `Create an outfit for a ${params.occasion} occasion. 
-            Style preferences: ${params.stylePreferences.join(', ')}.
-            Height: ${params.height}cm, Weight: ${params.weight}kg.
-            Include specific details about colors, fabrics, and styling tips.`
+          role: 'user',
+          content: `Create a ${params.style} outfit for a ${params.occasion} occasion. 
+                   The outfit should be ${params.color} themed and suitable for ${params.gender}.
+                   Budget range: ${params.budget}.
+                   Include specific details about each clothing item.`
         }
       ]
     })
 
-    const outfitDescription = descriptionResponse.choices[0].message.content
+    const outfitDescription = descriptionResponse.choices[0]?.message?.content || ''
 
-    // Generate outfit image using DALL-E
+    // Generate outfit image using DALL-E 3
     const imageResponse = await openai.images.generate({
-      model: "dall-e-3",
-      prompt: `Create a high-quality fashion photograph of a person wearing: ${outfitDescription}. 
-        The image should be well-lit, professional, and showcase the outfit clearly. 
-        The person should be shown from head to toe.`,
+      model: 'dall-e-3',
+      prompt: `A high-quality fashion photograph of a ${params.style} outfit for ${params.occasion}. 
+               The outfit should be ${params.color} themed and suitable for ${params.gender}.
+               Style: Photorealistic, professional fashion photography.
+               Composition: Full body shot, neutral background, well-lit.
+               Focus on the clothing details and overall aesthetic.`,
       n: 1,
-      size: "1024x1024",
-      quality: "standard",
-      style: "natural"
+      size: '1024x1024',
+      quality: 'standard',
+      style: 'natural'
     })
+
+    const imageUrl = imageResponse.data?.[0]?.url
+    if (!imageUrl) {
+      throw new Error('Failed to generate outfit image')
+    }
+
+    // Get retailer suggestions
+    const retailerResponse = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a fashion expert. Suggest specific retailers where the user can find similar items.'
+        },
+        {
+          role: 'user',
+          content: `Based on this outfit description: "${outfitDescription}"
+                   Suggest 3-4 specific retailers where someone could find similar items.
+                   For each retailer, include:
+                   1. The retailer name
+                   2. Why they're a good match
+                   3. Price range
+                   Format the response as a JSON array of objects with 'name', 'reason', and 'priceRange' properties.`
+        }
+      ]
+    })
+
+    const retailersText = retailerResponse.choices[0]?.message?.content || '[]'
+    const retailers = JSON.parse(retailersText)
 
     return {
       description: outfitDescription,
-      image: imageResponse.data[0].url
+      image: imageUrl,
+      retailers
     }
   } catch (error) {
     console.error('Error generating outfit:', error)
@@ -62,24 +93,23 @@ export const generateOutfit = async (params: OutfitGenerationParams) => {
   }
 }
 
-export const suggestRetailers = async (outfitDescription: string) => {
+export const suggestRetailers = async (description: string) => {
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: 'gpt-4',
       messages: [
         {
-          role: "system",
-          content: "You are a fashion expert. Suggest specific retailers and products that match the outfit description."
+          role: 'system',
+          content: 'You are a fashion expert. Suggest retailers where the user can find similar items to the outfit described.'
         },
         {
-          role: "user",
-          content: `For this outfit: ${outfitDescription}, suggest specific retailers and products that would match this look. 
-            Include direct links to the products if possible.`
+          role: 'user',
+          content: `For this outfit: ${description}, suggest 3-5 retailers where I can find similar items. Format each suggestion as "Retailer Name: URL"`
         }
       ]
     })
 
-    return response.choices[0].message.content
+    return response.choices[0]?.message?.content || ''
   } catch (error) {
     console.error('Error suggesting retailers:', error)
     throw error
